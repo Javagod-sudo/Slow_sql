@@ -1,13 +1,11 @@
-package org.example;
+package org.slowSql;
 
 
 import Extractor.SlowQueryTableExtractor;
-import org.apache.flink.types.StringValue;
 import util.ExcelUtil;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class main {
