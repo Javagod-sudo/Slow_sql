@@ -1,11 +1,12 @@
 package util;
 
 import lombok.Data;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+
+import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -390,4 +391,95 @@ public class ExcelUtil {
             }
         }
     }
+
+    // ==================== 终极重点：读取 resources 下的维表（兼容 Java8 + 新版POI） ====================
+    public static List<Map<String, Object>> readExcelFromResources(String resourceName, int sheetIndex) throws Exception {
+        InputStream is = ExcelUtil.class.getClassLoader().getResourceAsStream(resourceName);
+        if (is == null) {
+            throw new Exception("资源未找到: " + resourceName + "\n请确认文件在 src/main/resources/ 目录下");
+        }
+
+        Workbook workbook = null;
+        try {
+            if (resourceName.toLowerCase().endsWith(".xlsx")) {
+                workbook = new XSSFWorkbook(is);
+            } else if (resourceName.toLowerCase().endsWith(".xls")) {
+                workbook = new HSSFWorkbook(new POIFSFileSystem(is));
+            } else {
+                throw new Exception("仅支持 .xls 和 .xlsx");
+            }
+
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
+            if (sheet == null) throw new Exception("第 " + sheetIndex + " 个工作表不存在");
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) return result;
+
+            List<String> headers = new ArrayList<>();
+            for (Cell cell : headerRow) {
+                headers.add(cell == null ? "" : getCellValueAsString(cell));
+            }
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                Map<String, Object> map = new LinkedHashMap<>();
+                for (int j = 0; j < headers.size(); j++) {
+                    Cell cell = row.getCell(j, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+                    map.put(headers.get(j), getCellValue(cell));
+                }
+                result.add(map);
+            }
+            return result;
+
+        } finally {
+            if (workbook != null) try { workbook.close(); } catch (Exception ignored) {}
+            try { is.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    // ==================== 下面这三个 private 方法必须放在类内部！ ====================
+    private static Object getCellValue(Cell cell) {
+        if (cell == null) return "";
+        CellType type = cell.getCellType();
+        if (type == CellType.STRING) {
+            return cell.getStringCellValue();
+        } else if (type == CellType.NUMERIC) {
+            if (DateUtil.isCellDateFormatted(cell)) {
+                return cell.getDateCellValue();
+            } else {
+                return cell.getNumericCellValue();
+            }
+        } else if (type == CellType.BOOLEAN) {
+            return cell.getBooleanCellValue();
+        } else if (type == CellType.FORMULA) {
+            try {
+                return getFormulaValue(cell);
+            } catch (Exception e) {
+                return cell.getCellFormula();
+            }
+        } else {
+            return "";
+        }
+    }
+
+    private static Object getFormulaValue(Cell cell) {
+        CellType resultType = cell.getCachedFormulaResultType();
+        if (resultType == CellType.STRING) return cell.getStringCellValue();
+        if (resultType == CellType.NUMERIC) return cell.getNumericCellValue();
+        if (resultType == CellType.BOOLEAN) return cell.getBooleanCellValue();
+        return cell.getCellFormula();
+    }
+
+    private static String getCellValueAsString(Cell cell) {
+        if (cell == null) return "";
+        try {
+            return cell.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
 }

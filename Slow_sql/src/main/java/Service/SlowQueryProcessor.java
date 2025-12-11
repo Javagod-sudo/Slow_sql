@@ -12,11 +12,12 @@ import java.util.*;
 public class SlowQueryProcessor {
 
     // 固定配置
-    private static final String DICT_FILE = "D:\\远光\\cwzt性能优化\\维表\\dim_map.xls";
+    private static final String DICT_FILE = "dim_map.xls";
     private static final String TARGET_DEPT = "大数据事业部";
     private static final String FIELD_NAME_DEPT = "微服务负责部门";
     private static final String SQL_FIELD = "原始语句";
     private static final String OUTPUT_DIR = "D:\\远光\\cwzt性能优化\\最终结果\\";
+
 
     private static final List<String> DICT_FIELDS     = Arrays.asList("dp", "dp_leader", "dp_group");
     private static final List<String> DICT_FIELDS_02  = Arrays.asList("table_name", "dp", "dp_leader", "dp_group");
@@ -38,14 +39,15 @@ public class SlowQueryProcessor {
 
         try {
             // 1. 读取维表
-            List<Map<String, Object>> dictList = ExcelUtil.readExcel(DICT_FILE, 0);
-
+           // List<Map<String, Object>> dictList = ExcelUtil.readExcel(DICT_FILE, 0);
+            List<Map<String, Object>> dictList = ExcelUtil.readExcelFromResources(DICT_FILE, 0);
             // 2. 读取主表全量数据（用于最后关联 dp_group）
-            List<Map<String, Object>> dataList = ExcelUtil.readExcel(filePath, sheetIndex);
+            List<Map<String, Object>> dataList = ExcelUtil.readExcelFromResources(filePath, sheetIndex);
 
             // 3. 过滤大数据事业部
             List<Map<String, Object>> bigDataDeptList = SlowQueryTableExtractor.filterTable(
-                    ExcelUtil.readExcel(filePath, sheetIndex),
+                   // ExcelUtil.readExcel(filePath, sheetIndex),
+                    ExcelUtil.readExcelFromResources(filePath, sheetIndex),
                     FIELD_NAME_DEPT,
                     TARGET_DEPT
             );
